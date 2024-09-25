@@ -2,6 +2,8 @@ import { View } from "react-native";
 
 import { Button, HelperText, Text, TextInput } from "react-native-paper";
 import { login, useMyContextController } from "../store";
+// import auth from "@react-native-firebase/auth";
+
 
 import { useEffect, useState } from "react";
 
