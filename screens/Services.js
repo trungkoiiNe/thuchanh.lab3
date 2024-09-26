@@ -15,6 +15,7 @@ const Services = ({ navigation,route }) => {
   useFocusEffect(
     useCallback(() => {
       const fetchServices = async () => {
+
         const snapshot = await firestore().collection("Services").get();
         const servicesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setServices(servicesList);

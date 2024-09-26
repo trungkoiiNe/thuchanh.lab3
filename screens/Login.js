@@ -11,7 +11,9 @@ const Login = ({ navigation }) => {
   const [controller, dispatch] = useMyContextController();
   const { userLogin } = controller;
   const [email, setEmail] = useState("");
+// setEmail("admin@gmail.com");
   const [password, setPassword] = useState("");
+  // setPassword("123456");
   const [hiddenPassword, setHiddenPassword] = useState(false);
   const hasErrorEmail = () => !email.includes("@");
   const hasErrorPassword = () => password.length < 6;

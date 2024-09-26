@@ -4,6 +4,7 @@ import RouterService from "../routers/RouterService";
 import Transaction from "./Transaction";
 import Customer from "./Customer";
 import Setting from "./Setting";
+import RouterTransaction from "../routers/RouterTransaction";
 // import Customers from "./Customers";
 
 const Tab = createMaterialBottomTabNavigator();
@@ -20,9 +21,10 @@ const Admin = () => {
         }}
       />
       <Tab.Screen
-        name="Transaction"
-        component={Transaction}
+        name="TransactionSerivce"
+        component={RouterTransaction}
         options={{
+          title:"Transaction",
           tabBarIcon: "cash",
         }}
       />
