@@ -1,75 +1,58 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useFocusEffect } from "@react-navigation/native";
-
+import React, { useCallback, useMemo } from "react";
 import { View, StyleSheet } from "react-native";
 import { Card, Title, Paragraph, Text } from "react-native-paper";
 import firestore from "@react-native-firebase/firestore";
+import { useFocusEffect } from "@react-navigation/native";
 
-const ServiceDetail = ({ route, navigation }) => {
+const ServiceDetail = ({ route }) => {
   const { serviceId } = route.params;
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
-  const [creator, setCreator] = useState("");
-  const [finalUpdateTime, setFinalUpdateTime] = useState("");
-  const [time, setTime] = useState("");
-  const [service, setService] = useState(null);
+  const [service, setService] = React.useState(null);
 
-  // console.log(service)
-  const SERVICES = firestore().collection("Services");
-  //get specified service data from firestore using service id
-  // const serviceData=null;
-  useEffect(() => {
-    const fetchService = async () => {
-      const serviceDoc = await SERVICES.doc(serviceId).get();
-      if (serviceDoc.exists) {
-        const serviceData = serviceDoc.data();
-        setName(serviceData.name);
-        setPrice(serviceData.price.toString());
-        setCreator(serviceData.creator);
-        setFinalUpdateTime(serviceData.finalUpdateTime.toDate().toLocaleString());
-        setTime(serviceData.time.toDate().toLocaleString());
-      }
-    };
-    fetchService();
-  }, [serviceId]);
   useFocusEffect(
     useCallback(() => {
       const fetchService = async () => {
         const serviceDoc = await firestore().collection("Services").doc(serviceId).get();
         if (serviceDoc.exists) {
-          setServices({ id: serviceDoc.id, ...serviceDoc.data() });
+          setService({ id: serviceDoc.id, ...serviceDoc.data() });
         }
       };
       fetchService();
     }, [serviceId])
   );
+
+  const formattedTime = useMemo(() => {
+    return service?.time?.toDate().toLocaleString() || '';
+  }, [service?.time]);
+
+  const formattedUpdateTime = useMemo(() => {
+    return service?.finalUpdateTime?.toDate().toLocaleString() || '';
+  }, [service?.finalUpdateTime]);
+
+  if (!service) {
+    return <View style={styles.container}><Text>Loading...</Text></View>;
+  }
+
   return (
     <View style={styles.container}>
       <Card style={styles.card}>
         <Card.Content>
-          <Title style={styles.title}>{name}</Title>
-          <Paragraph style={styles.price}>${price}</Paragraph>
-          <View style={styles.infoContainer}>
-            <Text style={styles.label}>Creator:</Text>
-            <Text style={styles.value}>{creator}</Text>
-          </View>
-          <View style={styles.infoContainer}>
-            <Text style={styles.label}>Created:</Text>
-            <Text style={styles.value}>
-              {time}
-            </Text>
-          </View>
-          <View style={styles.infoContainer}>
-            <Text style={styles.label}>Last Updated:</Text>
-            <Text style={styles.value}>
-              {finalUpdateTime}
-            </Text>
-          </View>
+          <Title style={styles.title}>{service.name}</Title>
+          <Paragraph style={styles.price}>${service.price}</Paragraph>
+          <InfoRow label="Creator" value={service.creator} />
+          <InfoRow label="Created" value={formattedTime} />
+          <InfoRow label="Last Updated" value={formattedUpdateTime} />
         </Card.Content>
       </Card>
     </View>
   );
 };
+
+const InfoRow = ({ label, value }) => (
+  <View style={styles.infoContainer}>
+    <Text style={styles.label}>{label}:</Text>
+    <Text style={styles.value}>{value}</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
@@ -108,4 +91,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ServiceDetail;
+export default React.memo(ServiceDetail);

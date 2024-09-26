@@ -5,6 +5,8 @@ import { Alert } from "react-native";
 
 const MyContext = createContext();
 MyContext.displayName = "vbdvabv";
+const SERVICES = firestore().collection("Services");
+
 // Define Reducer
 const reducer = (state, action) => {
   switch (action.type) {
@@ -12,6 +14,13 @@ const reducer = (state, action) => {
       return { ...state, userLogin: action.value };
     case "LOGOUT":
       return { ...state, userLogin: null };
+    case "DELETE_SERVICE":
+      return {
+        ...state,
+        services: state.services.filter(
+          (service) => service.id !== action.serviceId
+        ),
+      };
     default:
       return new Error("Action not found");
   }
@@ -53,11 +62,28 @@ const login = (dispatch, email, password) => {
     )
     .catch((e) => Alert.alert("sai email va password"));
 };
-
+const deleteService = (dispatch, serviceId) => {
+  SERVICES.doc(serviceId)
+    .delete()
+    .then(() => {
+      // Optionally dispatch an action to update the state
+      dispatch({ type: "DELETE_SERVICE", serviceId });
+    })
+    .catch((error) => {
+      console.error("Error deleting service: ", error);
+      Alert.alert("Error", "Failed to delete service. Please try again.");
+    });
+};
 const logout = (dispatch) => {
   auth()
     .signOut()
     .then(() => dispatch({ type: "LOGOUT" }));
 };
 
-export { MyContextControllerProvider, useMyContextController, login, logout };
+export {
+  MyContextControllerProvider,
+  useMyContextController,
+  login,
+  logout,
+  deleteService,
+};
