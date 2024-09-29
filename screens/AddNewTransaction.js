@@ -1,5 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+  FlatList,
+  VirtualizedList,
+  InteractionManager,
+} from "react-native";
 import {
   TextInput,
   Button,
@@ -11,25 +20,74 @@ import {
   Menu,
   List,
   Divider,
+  Alert,
 } from "react-native-paper";
 import firestore from "@react-native-firebase/firestore";
 import auth from "@react-native-firebase/auth";
 import Loading from "../components/Loading";
-const AddNewTransaction = ({ navigation }) => {
+import { Image } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import storage from "@react-native-firebase/storage";
+// import Loading from "../components/Loading";
+
+const AddNewTransaction = React.memo(({ navigation }) => {
   const [customer, setCustomer] = useState("");
   const [status, setStatus] = useState("not paid");
   const [discount, setDiscount] = useState("0");
   const [paymentmethod, setPaymentMethod] = useState("");
   const [tax, setTax] = useState("0");
   const [note, setNote] = useState("");
+  const [isQRCodeLoaded, setIsQRCodeLoaded] = useState(false);
 
   const [customers, setCustomers] = useState([]);
   const [services, setServices] = useState([]);
   const [selectedServices, setSelectedServices] = useState([]);
   const [visible, setVisible] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState("");
 
   const TRANSACTIONS = firestore().collection("Transactions");
   const [isLoading, setIsLoading] = useState(false);
+  const [proofImage, setProofImage] = useState(null);
+
+  const takePhoto = async () => {
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [9, 16],
+      quality: 1,
+    });
+
+    if (!result.cancelled) {
+      console.log(result);
+      let filePath = result.assets[0].uri;
+      if (Platform.OS === "ios") {
+        filePath = filePath.replace("file://", "");
+      }
+      setProofImage(filePath);
+    }
+  };
+
+  const calculateTotalCostAfterTaxAndDiscount = useCallback(() => {
+    const subtotal = selectedServices.reduce(
+      (total, service) => total + service.price * service.quantity,
+      0
+    );
+    const taxAmount = subtotal * (parseFloat(tax) / 100);
+    const discountAmount = subtotal * (parseFloat(discount) / 100);
+    return subtotal + taxAmount - discountAmount;
+  }, [selectedServices, tax, discount]);
+
+  const generateQRCodeUrl = useCallback(() => {
+    if (paymentmethod === "banking" && calculateTotalCostAfterTaxAndDiscount()!==0) {
+      const totalAmount = calculateTotalCostAfterTaxAndDiscount();
+      const url = `https://api.vietqr.io/image/970423-64209062003-l8WGEeG.jpg?accountName=DUONG%20NGO%20CHI%20TRUNG&amount=${totalAmount}`;
+      console.log("Generated QR Code URL:", url);
+      setQrCodeUrl(url);
+    } else {
+      setQrCodeUrl("");
+    }
+  }, [paymentmethod, calculateTotalCostAfterTaxAndDiscount]);
+
   useEffect(() => {
     const fetchCustomersAndServices = async () => {
       setIsLoading(true);
@@ -50,15 +108,29 @@ const AddNewTransaction = ({ navigation }) => {
       }
     };
     fetchCustomersAndServices();
+    console.log("current qr code url", qrCodeUrl);
   }, []);
+  useEffect(() => {
+    InteractionManager.runAfterInteractions(() => {
+      // Perform expensive operations here
+      generateQRCodeUrl();
+    });
+  }, [generateQRCodeUrl]);
+  useEffect(() => {
+    console.log("Current QR Code URL:", qrCodeUrl);
+  }, [qrCodeUrl]);
   const handleDiscountChange = (text) => {
-    const numericValue = text.replace(/[^0-9]/g, "");
-    setDiscount(numericValue);
+    const numericValue = text
+      .replace(/[^0-9.]/g, "")
+      .replace(/(\..*)\./g, "$1");
+    setDiscount(numericValue === "" ? "0" : numericValue);
   };
 
   const handleTaxChange = (text) => {
-    const numericValue = text.replace(/[^0-9]/g, "");
-    setTax(numericValue);
+    const numericValue = text
+      .replace(/[^0-9.]/g, "")
+      .replace(/(\..*)\./g, "$1");
+    setTax(numericValue === "" ? "0" : numericValue);
   };
 
   const addService = (service) => {
@@ -95,34 +167,60 @@ const AddNewTransaction = ({ navigation }) => {
       (total, service) => total + service.price * service.quantity,
       0
     );
-    const taxAmount = subtotal * (parseFloat(tax) / 100);
-    const discountAmount = subtotal * (parseFloat(discount) / 100);
-    return subtotal + taxAmount - discountAmount;
+    return subtotal;
   };
+  // const calculateTotalCostAfterTaxAndDiscount = () => {
+  //   const subtotal = selectedServices.reduce(
+  //     (total, service) => total + service.price * service.quantity,
+  //     0
+  //   );
+  //   const taxAmount = subtotal * (parseFloat(tax) / 100);
+  //   const discountAmount = subtotal * (parseFloat(discount) / 100);
+  //   const totalcostaftertaxanddiscount = subtotal + taxAmount - discountAmount;
+  //   return totalcostaftertaxanddiscount;
+  // };
 
   const addTransaction = async () => {
+    if (!customer || selectedServices.length === 0) {
+      alert("You must select a customer and at least one service.");
+      return;
+    }
+
     const admin = auth().currentUser;
     const now = firestore.Timestamp.now();
     const totalcost = calculateTotalCost();
-    // const totalcostafterdiscount =
-    //   totalcost - totalcost * (parseFloat(discount) / 100);
+    const totalcostaftertaxanddiscount =
+      calculateTotalCostAfterTaxAndDiscount();
 
     try {
-      await TRANSACTIONS.add({
+      const transactionData = {
         customer,
-        admin: admin.uid,
+        admin: admin.email,
         serviceslist: selectedServices
           .map((s) => `${s.id},${s.quantity}`)
           .join(";"),
         billDate: now,
         status,
         totalcost,
+        totalcostaftertaxanddiscount,
         discount: parseFloat(discount),
-        // totalcostafterdiscount,
         paymentmethod,
         tax: parseFloat(tax),
         note,
-      });
+      };
+
+      if (paymentmethod === "banking" && proofImage) {
+        console.log(proofImage);
+        const transactionId = TRANSACTIONS.doc().id;
+        const reference = storage().ref(
+          `transaction_proofs/${transactionId}.jpg`
+        );
+        await reference.putFile(proofImage);
+        const proofImageUrl = await reference.getDownloadURL();
+        transactionData.proofImageUrl = proofImageUrl;
+      }
+      await TRANSACTIONS.add(transactionData);
+
       alert("Transaction added successfully");
       navigation.goBack();
     } catch (error) {
@@ -130,9 +228,18 @@ const AddNewTransaction = ({ navigation }) => {
       alert("Failed to add transaction. Please try again.");
     }
   };
-
+  const ServiceItem = React.memo(({ service, onAdd }) => (
+    <List.Item
+      title={service.name}
+      description={`${service.price.toFixed(2)}`}
+      right={() => <IconButton icon="plus" onPress={() => onAdd(service)} />}
+    />
+  ));
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      nestedScrollEnabled={true}
+    >
       <Surface style={styles.surface}>
         <Text style={styles.title}>Add New Transaction</Text>
 
@@ -140,7 +247,9 @@ const AddNewTransaction = ({ navigation }) => {
           visible={visible}
           onDismiss={() => setVisible(false)}
           anchor={
-            <Button onPress={() => setVisible(true)}>Select Customer</Button>
+            <Button onPress={() => setVisible(true)}>
+              {customer ? "Select Another Customer" : "Select Customer"}
+            </Button>
           }
         >
           {customers.map((c) => (
@@ -154,27 +263,29 @@ const AddNewTransaction = ({ navigation }) => {
             />
           ))}
         </Menu>
+        {customer && (
+          <Text style={styles.selectedCustomer}>
+            Selected:{" "}
+            {customers.find((c) => c.id === customer)?.fullName ||
+              customers.find((c) => c.id === customer)?.email}
+          </Text>
+        )}
 
         <Text style={styles.sectionTitle}>Available Services</Text>
         {isLoading ? (
           <Loading />
         ) : (
           <>
-            <ScrollView style={styles.servicesList}>
-              {services.map((service) => (
-                <List.Item
-                  key={service.id}
-                  title={service.name}
-                  description={`$${service.price.toFixed(2)}`}
-                  right={() => (
-                    <IconButton
-                      icon="plus"
-                      onPress={() => addService(service)}
-                    />
-                  )}
-                />
-              ))}
-            </ScrollView>
+            <VirtualizedList
+              data={services}
+              initialNumToRender={10}
+              renderItem={({ item }) => (
+                <ServiceItem service={item} onAdd={addService} />
+              )}
+              keyExtractor={(item) => item.id}
+              getItemCount={(data) => data.length}
+              getItem={(data, index) => data[index]}
+            />
           </>
         )}
 
@@ -201,7 +312,7 @@ const AddNewTransaction = ({ navigation }) => {
         ))}
 
         <Text style={styles.totalCost}>
-          Total Cost: ${calculateTotalCost().toFixed(2)}
+          Total Cost: ${calculateTotalCostAfterTaxAndDiscount().toFixed(2)}
         </Text>
 
         <RadioButton.Group
@@ -228,7 +339,7 @@ const AddNewTransaction = ({ navigation }) => {
           value={paymentmethod}
         >
           <View style={styles.radioGroup}>
-            <RadioButton.Item label="Debit" value="debit" />
+            {/* <RadioButton.Item label="Debit" value="debit" /> */}
             <RadioButton.Item label="Cash" value="cash" />
             <RadioButton.Item label="Banking" value="banking" />
           </View>
@@ -251,14 +362,45 @@ const AddNewTransaction = ({ navigation }) => {
           style={styles.input}
           multiline
         />
+        {paymentmethod === "banking" && (
+          <>
+            {qrCodeUrl ? (
+              <>
+                <Image
 
+                  key={qrCodeUrl}
+                  source={{ uri: qrCodeUrl }}
+                  style={[{ width: 400, height: 400 },styles.qrcode]}
+                  onLoadStart={() => setIsQRCodeLoaded(false)}
+                  onLoad={() => setIsQRCodeLoaded(true)}
+                  resizeMode="contain"
+                  onError={(e) =>
+                    console.log("Image loading error:", e.nativeEvent.error)
+                  }
+                />
+                {!isQRCodeLoaded && <Loading />}
+              </>
+            ) : (
+              <Text></Text>
+            )}
+            <Button mode="contained" onPress={takePhoto}>
+              Take Proof Photo
+            </Button>
+            {proofImage && (
+              <Image
+                source={{ uri: proofImage }}
+                style={{ width: 200, height: 200 }}
+              />
+            )}
+          </>
+        )}
         <Button mode="contained" onPress={addTransaction} style={styles.button}>
           Add Transaction
         </Button>
       </Surface>
     </ScrollView>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -315,6 +457,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     marginVertical: 10,
+  },
+  selectedCustomer: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  qrcode: {
+    marginTop: 10,
+    alignSelf: "center",
   },
 });
 

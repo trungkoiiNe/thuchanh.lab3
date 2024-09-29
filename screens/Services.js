@@ -1,23 +1,33 @@
-import React, { useState, useEffect,useCallback } from "react";
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useState, useEffect, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 
 import { View, FlatList, StyleSheet } from "react-native";
 import { Text, IconButton, Card, Title, Paragraph } from "react-native-paper";
 import firestore from "@react-native-firebase/firestore";
+import { useMyContextController } from "../store";
+import auth from "@react-native-firebase/auth";
+const Services = ({ navigation, route }) => {
+  const [controller] = useMyContextController();
+  const { userLogin,userEmail } = controller;
 
-const Services = ({ navigation,route }) => {
   const [services, setServices] = useState([]);
   const SERVICES = firestore().collection("Services");
   const handleServicePress = (serviceData) => {
     console.log(serviceData);
-    navigation.navigate("ServiceDetail", { serviceId:serviceData });
+    navigation.navigate("ServiceDetail", { serviceId: serviceData });
   };
+  // const currentUser=getCurrentUser();
+  // console.log(currentUser);
+  console.log(userEmail)
   useFocusEffect(
+
     useCallback(() => {
       const fetchServices = async () => {
-
         const snapshot = await firestore().collection("Services").get();
-        const servicesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const servicesList = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setServices(servicesList);
       };
       fetchServices();
@@ -36,7 +46,12 @@ const Services = ({ navigation,route }) => {
   }, []);
 
   const renderServiceItem = ({ item }) => (
-    <Card style={styles.card} onPress={() => handleServicePress(item.id)}>
+    <Card
+      style={styles.card}
+      onPress={
+        userLogin.role === "admin" ? () => handleServicePress(item.id) : null
+      }
+    >
       <Card.Content>
         <Title style={styles.serviceName}>{item.name}</Title>
         <Paragraph style={styles.servicePrice}>${item.price}</Paragraph>
@@ -48,12 +63,13 @@ const Services = ({ navigation,route }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerText}>Services List</Text>
-        <IconButton
-          icon="plus-circle"
-          color="#FF6B6B"
-          size={40}
-          onPress={() => navigation.navigate("AddNewService")}
-        />
+        {userLogin.role === "admin" && (
+          <IconButton
+            icon="plus"
+            size={24}
+            onPress={() => navigation.navigate("AddService")}
+          />
+        )}
       </View>
       <FlatList
         data={services}

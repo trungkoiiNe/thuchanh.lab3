@@ -13,7 +13,7 @@ const Stack = createStackNavigator();
 
 const RouterTransaction = () => {
   const [controller, dispatch] = useMyContextController();
-  const { userlogin } = controller;
+  const { userLogin } = controller;
   const [visible, setVisible] = useState(false);
   // const dispatch = useDispatch();
 
@@ -24,7 +24,7 @@ const RouterTransaction = () => {
     <Stack.Navigator
       initialRouteName="Transaction"
       screenOptions={{
-        title: userlogin != null ? userlogin.name : "",
+        title: userLogin != null ? userLogin.name : "",
         headerTitleAlign: "center",
         headerStyle: {
           backgroundColor: "pink",
@@ -35,42 +35,36 @@ const RouterTransaction = () => {
         name="Transaction"
         component={Transaction}
         options={{
-          headerRight: () => (
-            <IconButton
-              icon="plus"
-              onPress={() => {
-                /* Add new service action */
-              }}
-            />
-          ),
+          // headerRight: () => (
+          //   <IconButton
+          //     icon="plus"
+          //     onPress={() => {
+          //       /* Add new service action */
+          //     }}
+          //   />
+          // ),
         }}
       />
-      <Stack.Screen
-        name="AddNewTransaction"
-        component={AddNewTransaction}
-        options={{
-          headerRight: () => (
-            <IconButton
-              icon="plus"
-              onPress={() => {
-                /* Add new service action */
-              }}
-            />
-          ),
-        }}
-      />
+      {userLogin.role === "admin" ? (
+        <Stack.Screen
+          name="AddNewTransaction"
+          component={AddNewTransaction}
+        />
+      ) : (
+       null
+      )}
       <Stack.Screen
         name="TransactionDetail"
         component={TransactionDetail}
         options={{
-          headerRight: () => (
-            <IconButton
-              icon="plus"
-              onPress={() => {
-                /* Add new service action */
-              }}
-            />
-          ),
+          // headerRight: () => (
+          //   <IconButton
+          //     icon="plus"
+          //     onPress={() => {
+          //       /* Add new service action */
+          //     }}
+          //   />
+          // ),
         }}
       />
     </Stack.Navigator>

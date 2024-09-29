@@ -3,7 +3,7 @@ import { View } from "react-native";
 import { Button, HelperText, Text, TextInput } from "react-native-paper";
 import { login, useMyContextController } from "../store";
 // import auth from "@react-native-firebase/auth";
-
+import Loading from "../components/Loading";
 
 import { useEffect, useState } from "react";
 
@@ -11,14 +11,16 @@ const Login = ({ navigation }) => {
   const [controller, dispatch] = useMyContextController();
   const { userLogin } = controller;
   const [email, setEmail] = useState("");
-// setEmail("admin@gmail.com");
+  // setEmail("admin@gmail.com");
   const [password, setPassword] = useState("");
   // setPassword("123456");
   const [hiddenPassword, setHiddenPassword] = useState(false);
   const hasErrorEmail = () => !email.includes("@");
   const hasErrorPassword = () => password.length < 6;
+  const [isLoading, setIsLoading] = useState(false);
   const handleLogin = () => {
     login(dispatch, email, password);
+    setIsLoading(true);
   };
 
   useEffect(() => {
@@ -43,8 +45,7 @@ const Login = ({ navigation }) => {
           marginBottom: 50,
         }}
       >
-        {" "}
-        Login{" "}
+        Login
       </Text>
       <TextInput label={"Email"} value={email} onChangeText={setEmail} />
       <HelperText type="error" visible={hasErrorEmail()}>
@@ -79,6 +80,7 @@ const Login = ({ navigation }) => {
           Forgot Password
         </Button>
       </View>
+      {isLoading ? <Loading /> : null}
     </View>
   );
 };

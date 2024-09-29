@@ -36,28 +36,29 @@ const RouterService = () => {
         name="Services"
         component={Services}
         options={{
-          headerRight: () => (
-            <IconButton
-              icon="plus"
-              onPress={() => {
-                /* Add new service action */
-              }}
-            />
-          ),
+          // title: "Services",
+          // headerRight: () => (
+          //   <IconButton
+          //     icon="plus"
+          //     onPress={() => {
+          //       /* Add new service action */
+          //     }}
+          //   />
+          // ),
         }}
       />
       <Stack.Screen
         name="AddNewService"
         component={AddNewService}
         options={{
-          headerRight: () => (
-            <IconButton
-              icon="check"
-              onPress={() => {
-                /* Save new service action */
-              }}
-            />
-          ),
+          // headerRight: () => (
+          //   <IconButton
+          //     icon="check"
+          //     onPress={() => {
+          //       /* Save new service action */
+          //     }}
+          //   />
+          // ),
         }}
       />
       <Stack.Screen

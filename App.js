@@ -19,7 +19,7 @@ const App = () => {
 
   useEffect(() => {
     //Dk tai khoan admin
-    USERS.doc(admin.email).onSnapshot((u) => {
+    USERS.doc(admin.email.toLowerCase()).onSnapshot((u) => {
       if (!u.exists) {
         auth()
           .createUserWithEmailAndPassword(admin.email, admin.password)

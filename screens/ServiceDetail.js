@@ -9,14 +9,13 @@ const ServiceDetail = ({ route }) => {
   const [service, setService] = React.useState(null);
 
   useFocusEffect(
-    useCallback(() => {
-      const fetchService = async () => {
-        const serviceDoc = await firestore().collection("Services").doc(serviceId).get();
-        if (serviceDoc.exists) {
-          setService({ id: serviceDoc.id, ...serviceDoc.data() });
+    useCallback( () => {
+      const fetchService =  firestore().collection("Services").doc(serviceId).onSnapshot((doc)=>{
+        if (doc.exists) {
+          setService({ id: doc.id, ...doc.data() });
         }
-      };
-      fetchService();
+      });
+      return()=> fetchService();
     }, [serviceId])
   );
 

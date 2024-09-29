@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
-import auth from "@react-native-firebase/auth";
+import auth, { updateCurrentUser } from "@react-native-firebase/auth";
 import firestore from "@react-native-firebase/firestore";
-import { Alert } from "react-native";
+import { Alert, ToastAndroid } from "react-native";
 
 const MyContext = createContext();
 MyContext.displayName = "vbdvabv";
@@ -11,9 +11,9 @@ const SERVICES = firestore().collection("Services");
 const reducer = (state, action) => {
   switch (action.type) {
     case "USER_LOGIN":
-      return { ...state, userLogin: action.value };
+      return { ...state, userLogin: action.value, userEmail: action.email };
     case "LOGOUT":
-      return { ...state, userLogin: null };
+      return { ...state, userLogin: null, userEmail: null };
     case "DELETE_SERVICE":
       return {
         ...state,
@@ -32,6 +32,7 @@ const MyContextControllerProvider = ({ children }) => {
   const initialState = {
     userLogin: null,
     services: [],
+    userEmail: [],
   };
 
   const [controller, dispatch] = useReducer(reducer, initialState);
@@ -57,11 +58,12 @@ const login = (dispatch, email, password) => {
     .signInWithEmailAndPassword(email, password)
     .then((response) =>
       USERS.doc(email).onSnapshot((u) =>
-        dispatch({ type: "USER_LOGIN", value: u.data() })
+        dispatch({ type: "USER_LOGIN", value: u.data(), email })
       )
     )
     .catch((e) => Alert.alert("sai email va password"));
 };
+
 const deleteService = (dispatch, serviceId) => {
   SERVICES.doc(serviceId)
     .delete()
@@ -74,16 +76,33 @@ const deleteService = (dispatch, serviceId) => {
       Alert.alert("Error", "Failed to delete service. Please try again.");
     });
 };
+
 const logout = (dispatch) => {
   auth()
     .signOut()
     .then(() => dispatch({ type: "LOGOUT" }));
 };
-
+// const getCurrentUser = (dispatch) => {
+//   auth()
+//     .onAuthStateChanged((user) => {
+//       if (user) {
+//         // User is signed in
+//         dispatch({ type: "USER_LOGIN", value: user });
+//       } else {
+//         // User is signed out
+//         dispatch({ type: "LOGOUT" });
+//       }
+//     })
+//     .catch((error) => {
+//       console.error("Error getting current user: ", error);
+//       Alert.alert("Error", "Failed to get current user. Please try again.");
+//     });
+// };
 export {
   MyContextControllerProvider,
   useMyContextController,
   login,
   logout,
   deleteService,
+  // getCurrentUser,
 };

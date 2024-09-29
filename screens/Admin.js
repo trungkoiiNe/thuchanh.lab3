@@ -4,6 +4,7 @@ import RouterService from "../routers/RouterService";
 import Transaction from "./Transaction";
 import Customer from "./Customer";
 import Setting from "./Setting";
+import UserInfo from "./UserInfo";
 import RouterTransaction from "../routers/RouterTransaction";
 // import Customers from "./Customers";
 
@@ -29,8 +30,8 @@ const Admin = () => {
         }}
       />
       <Tab.Screen
-        name="Customers"
-        component={Customer}
+        name="UserInfo"
+        component={UserInfo}
         options={{
           tabBarIcon: "account",
         }}
